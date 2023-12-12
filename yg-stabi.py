@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import sys
 import vpi
+from jetson_utils import videoSource, videoOutput
 # Usage: python ejo_wfb_stabilizer.py [optional video file]
 # press "Q" to quit
 
@@ -19,7 +20,7 @@ zoomFactor = 1.0
 
 # pV and mV can be increased for more smoothing #### start with pV = 0.01 and mV = 2 
 processVar=0.03
-measVar=2
+measVar=10
 
 # set to 1 to display full screen -- doesn't actually go full screen if your monitor rez is higher than stream rez which it probably is. TODO: monitor resolution detection
 showFullScreen = 1
@@ -90,6 +91,13 @@ def gstreamer_pipeline(
             display_height,
         )
     )
+
+pipeline = " ! ".join(["v4l2src device=/dev/video0",
+                       "video/x-raw, width=1280, height=720, framerate=50/1",
+                       "videoconvert",
+                       "video/x-raw, format=(string)BGR",
+                       "appsink"
+                       ])
 lk_params = dict( winSize  = (15,15),maxLevel = 3,criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03))
 count = 0
 a = 0
@@ -105,7 +113,7 @@ prevFrame = None
 if len(sys.argv) == 2:
 	SRC=sys.argv[1]
 
-video = cv2.VideoCapture(SRC)#gstreamer_pipeline(flip_method=0), cv2.CAP_GSTREAMER)
+video = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
 video.set(cv2.CAP_PROP_FRAME_HEIGHT, 720) #1080, 720, 360
 video.set(cv2.CAP_PROP_FRAME_WIDTH, 1280) #1920, 1280, 640
 backend = vpi.Backend.CUDA
